@@ -258,8 +258,6 @@ resource "confluent_role_binding" "app-developer-read-group" {
   role_name   = "DeveloperRead"
   crn_pattern = "${confluent_kafka_cluster.breaking-the-monolith.rbac_crn}/kafka=${confluent_kafka_cluster.standard.id}/group=ksql_app_id*"
 }
-
-
 resource "confluent_api_key" "app-kafka-api-key" {
   display_name = "app-consumer-kafka-api-key"
   description  = "Kafka API Key that is owned by 'app-consumer' service account"
@@ -282,5 +280,97 @@ resource "confluent_api_key" "app-kafka-api-key" {
     confluent_role_binding.app-developer-read-inventory,
     confluent_role_binding.app-developer-read-group
   ]
-
 }
+resource "orders_datagen_connector" "source" {
+  environment {
+    id = confluent_environment.gko2023-table6-env.id
+  }
+  kafka_cluster {
+    id = confluent_kafka_cluster.basic.id
+  }
+
+  config_sensitive = {}
+
+  config_nonsensitive = {
+    "connector.class"          = "DatagenSource"
+    "name"                     = "orders_datagen"
+    "kafka.auth.mode"          = "SERVICE_ACCOUNT"
+    "kafka.service.account.id" = confluent_service_account.mongo-source-service-account.id
+    "kafka.topic"              = confluent_kafka_topic.orders.topic_name
+    "output.data.format"       = "JSON"
+    "quickstart"               = "ORDERS"
+    "tasks.max"                = "1"
+  }
+
+  depends_on = [
+    confluent_role_binding.mongo-source-service-account
+  ]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "inventory_datagen_connector" "source" {
+  environment {
+    id = confluent_environment.gko2023-table6-env.id
+  }
+  kafka_cluster {
+    id = confluent_kafka_cluster.basic.id
+  }
+
+  config_sensitive = {}
+
+  config_nonsensitive = {
+    "connector.class"          = "DatagenSource"
+    "name"                     = "inventory_datagen_connector"
+    "kafka.auth.mode"          = "SERVICE_ACCOUNT"
+    "kafka.service.account.id" = confluent_service_account.mongo-source-service-account.id
+    "kafka.topic"              = confluent_kafka_topic.inventory.topic_name
+    "output.data.format"       = "JSON"
+    "quickstart"               = "INVENTORY"
+    "tasks.max"                = "1"
+  }
+
+  depends_on = [
+    confluent_role_binding.mongo-source-service-account
+  ]
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+resource "mongodb_sink_connector" "sink" {
+  environment {
+    id = confluent_environment.gko2023-table6-env.id
+  }
+  kafka_cluster {
+    id = confluent_kafka_cluster.standard.id
+  }
+
+  config_sensitive = {}
+
+  config_nonsensitive = {
+    "connector.class"          = "MongoDbAtlasSink"
+    "name"                     = "mongodb_sink_connector"
+    "kafka.auth.mode"          = "SERVICE_ACCOUNT"
+    "kafka.service.account.id" = confluent_service_account.mdb-sink.id
+    "kafka.topic"              = confluent_kafka_topic.fulfilled-orders.topic_name
+    "input.data.format"        = "JSON"
+    "connection.host"          = "<database-host-address>"
+    "connection.user"          = "<my-username>"
+    "connection.password"      = "<my-password>"
+    "max.num.retries"          = "3"
+    "retries.defer.timeout"    = "5000"
+    "max.batch.size"           = "0"
+    "database"                 = "<database-name>"
+    "collection"               = "<collection-name>"
+    "tasks.max"                = "1"
+  }
+
+  depends_on = [
+    confluent_role_binding.mdb-sink-developer-read-from-topic
+  ]
+
+  lifecycle {
+    prevent_destroy = true
+  }
