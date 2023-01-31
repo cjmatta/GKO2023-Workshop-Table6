@@ -286,7 +286,7 @@ resource "orders_datagen_connector" "source" {
     id = confluent_environment.gko2023-table6-env.id
   }
   kafka_cluster {
-    id = confluent_kafka_cluster.basic.id
+    id = confluent_kafka_cluster.breaking-the-monolith.id
   }
 
   config_sensitive = {}
@@ -315,7 +315,7 @@ resource "inventory_datagen_connector" "source" {
     id = confluent_environment.gko2023-table6-env.id
   }
   kafka_cluster {
-    id = confluent_kafka_cluster.basic.id
+    id = confluent_kafka_cluster.breaking-the-monolith.id
   }
 
   config_sensitive = {}
@@ -344,7 +344,7 @@ resource "mongodb_sink_connector" "sink" {
     id = confluent_environment.gko2023-table6-env.id
   }
   kafka_cluster {
-    id = confluent_kafka_cluster.standard.id
+    id = confluent_kafka_cluster.breaking-the-monolith.id
   }
 
   config_sensitive = {}
